@@ -7,21 +7,46 @@
     <link rel="stylesheet" href="/styles.css" />
   </head>
   <body>
-    <main class="shell">
-      <section class="mast">
+    <div class="loading-screen" id="loadingScreen" aria-live="polite">
+      <div class="loading-card">
+        <div class="loader"></div>
         <div>
-          <p class="eyebrow">Jira Batch Operations</p>
-          <h1>Clone Console</h1>
+          <strong id="loadingTitle">Loading</strong>
+          <p id="loadingText">Preparing Jira clone workspace</p>
         </div>
+      </div>
+    </div>
+
+    <header class="top-nav">
+      <div class="nav-inner">
+        <a class="brand" href="#top" aria-label="Jira Clone Console">
+          <span class="brand-mark">JC</span>
+          <span>Jira Clone Console</span>
+        </a>
+        <nav class="nav-links" aria-label="Page navigation">
+          <a href="#connection">Connection</a>
+          <a href="#batch">Batch</a>
+          <a href="#resultsPanel">Results</a>
+        </nav>
         <div class="status-strip" id="connectionStatus">
           <span class="pulse"></span>
           Loading Jira profile
+        </div>
+      </div>
+    </header>
+
+    <main class="shell">
+      <section class="mast" id="top">
+        <div>
+          <p class="eyebrow">Jira Batch Operations</p>
+          <h1>Clone Console</h1>
+          <p class="lead">Preview, validate, and clone multiple Jira stories from one clean workspace.</p>
         </div>
       </section>
 
       <section class="workspace">
         <form class="panel control-panel" id="cloneForm">
-          <div class="connection-box">
+          <section class="form-section" id="connection">
             <div class="panel-head compact-head">
               <div>
                 <h2>Connection</h2>
@@ -53,68 +78,70 @@
               <span>Token</span>
               <input id="jiraToken" type="password" autocomplete="off" placeholder="Paste current user's token" />
             </label>
-          </div>
+          </section>
 
-          <div class="panel-head">
-            <div>
-              <h2>Batch Input</h2>
-              <p>One ticket per line</p>
+          <section class="form-section" id="batch">
+            <div class="panel-head">
+              <div>
+                <h2>Batch Input</h2>
+                <p>One ticket per line</p>
+              </div>
+              <label class="switch">
+                <input type="checkbox" id="dryRun" checked />
+                <span></span>
+                Preview
+              </label>
             </div>
-            <label class="switch">
-              <input type="checkbox" id="dryRun" checked />
-              <span></span>
-              Preview
-            </label>
-          </div>
 
-          <label class="field tall">
-            <span>Ticket IDs</span>
-            <textarea id="tickets" spellcheck="false">GLS4-5780
+            <label class="field tall">
+              <span>Ticket IDs</span>
+              <textarea id="tickets" spellcheck="false">GLS4-5780
 GLS4-5521
 GLS4-5781</textarea>
-          </label>
-
-          <div class="two-col">
-            <label class="field">
-              <span>Summary Prefix</span>
-              <input id="summaryPrefix" value="CLONE - " />
             </label>
-            <label class="field">
-              <span>Target Project</span>
-              <input id="targetProject" placeholder="Use source project" />
-            </label>
-          </div>
 
-          <div class="field-group">
-            <span>Copy Fields</span>
-            <div class="chips" id="fieldChips">
-              <label><input type="checkbox" value="description" checked /> Description</label>
-              <label><input type="checkbox" value="priority" checked /> Priority</label>
-              <label><input type="checkbox" value="labels" checked /> Labels</label>
-              <label><input type="checkbox" value="reporter" checked /> Reporter</label>
-              <label><input type="checkbox" value="assignee" checked /> Assignee</label>
-              <label><input type="checkbox" value="components" checked /> Components</label>
-              <label><input type="checkbox" value="Background" checked /> Background</label>
-              <label><input type="checkbox" value="Work Stream" checked /> Work Stream</label>
-              <label><input type="checkbox" value="Sub-workstream" checked /> Sub-workstream</label>
-              <label><input type="checkbox" value="Requirement Type" checked /> Requirement Type</label>
-              <label><input type="checkbox" value="IT Owner" checked /> IT Owner</label>
-              <label><input type="checkbox" value="fixVersions" /> Fix Versions</label>
-              <label><input type="checkbox" value="versions" /> Affects Versions</label>
+            <div class="two-col">
+              <label class="field">
+                <span>Summary Prefix</span>
+                <input id="summaryPrefix" value="CLONE - " />
+              </label>
+              <label class="field">
+                <span>Target Project</span>
+                <input id="targetProject" placeholder="Use source project" />
+              </label>
             </div>
-          </div>
 
-          <div class="two-col">
-            <label class="switch in-row">
-              <input type="checkbox" id="linkOriginal" checked />
-              <span></span>
-              Link original
-            </label>
-            <label class="field compact">
-              <span>Link Type</span>
-              <input id="linkType" value="Cloners" />
-            </label>
-          </div>
+            <div class="field-group">
+              <span>Copy Fields</span>
+              <div class="chips" id="fieldChips">
+                <label><input type="checkbox" value="description" checked /> Description</label>
+                <label><input type="checkbox" value="priority" checked /> Priority</label>
+                <label><input type="checkbox" value="labels" checked /> Labels</label>
+                <label><input type="checkbox" value="reporter" checked /> Reporter</label>
+                <label><input type="checkbox" value="assignee" checked /> Assignee</label>
+                <label><input type="checkbox" value="components" checked /> Components</label>
+                <label><input type="checkbox" value="Background" checked /> Background</label>
+                <label><input type="checkbox" value="Work Stream" checked /> Work Stream</label>
+                <label><input type="checkbox" value="Sub-workstream" checked /> Sub-workstream</label>
+                <label><input type="checkbox" value="Requirement Type" checked /> Requirement Type</label>
+                <label><input type="checkbox" value="IT Owner" checked /> IT Owner</label>
+                <label><input type="checkbox" value="fixVersions" /> Fix Versions</label>
+                <label><input type="checkbox" value="versions" /> Affects Versions</label>
+              </div>
+            </div>
+
+            <div class="two-col">
+              <label class="switch in-row">
+                <input type="checkbox" id="linkOriginal" checked />
+                <span></span>
+                Link original
+              </label>
+              <label class="field compact">
+                <span>Link Type</span>
+                <input id="linkType" value="Cloners" />
+              </label>
+            </div>
+          </section>
 
           <div class="actions">
             <button class="secondary" type="button" id="loadConfig">Reload Config</button>
@@ -122,7 +149,7 @@ GLS4-5781</textarea>
           </div>
         </form>
 
-        <section class="panel results-panel">
+        <section class="panel results-panel" id="resultsPanel">
           <div class="panel-head">
             <div>
               <h2>Run Ledger</h2>

@@ -3,6 +3,9 @@ const state = {
 };
 
 const els = {
+  loadingScreen: document.querySelector("#loadingScreen"),
+  loadingTitle: document.querySelector("#loadingTitle"),
+  loadingText: document.querySelector("#loadingText"),
   connectionStatus: document.querySelector("#connectionStatus"),
   jiraBaseUrl: document.querySelector("#jiraBaseUrl"),
   jiraAuthMode: document.querySelector("#jiraAuthMode"),
@@ -24,6 +27,16 @@ const els = {
   results: document.querySelector("#results"),
   resultMeta: document.querySelector("#resultMeta"),
 };
+
+function showLoading(title, text = "") {
+  els.loadingTitle.textContent = title;
+  els.loadingText.textContent = text;
+  els.loadingScreen.classList.add("visible");
+}
+
+function hideLoading() {
+  els.loadingScreen.classList.remove("visible");
+}
 
 function selectedFields() {
   return Array.from(els.fieldChips.querySelectorAll("input:checked")).map((input) => input.value);
@@ -67,26 +80,31 @@ function escapeHtml(value) {
 }
 
 async function loadConfig() {
+  showLoading("Loading", "Reading local Jira configuration");
   setStatus("Loading Jira profile");
-  const response = await fetch("/api/config");
-  const data = await response.json();
-  if (!response.ok) throw new Error(data.error || "Could not load config");
+  try {
+    const response = await fetch("/api/config");
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.error || "Could not load config");
 
-  state.config = data;
-  els.jiraBaseUrl.value = data.base_url || "";
-  els.jiraAuthMode.value = data.auth_mode === "basic" ? "basic" : "pat";
-  els.jiraUser.value = data.user || "";
-  els.jiraToken.value = "";
-  els.jiraToken.placeholder = data.token_set ? "Token saved. Paste a new token to replace it." : "Paste current user's token";
-  els.summaryPrefix.value = data.config.summary_prefix || "";
-  els.targetProject.value = data.config.target_project || "";
-  els.linkOriginal.checked = Boolean(data.config.link_to_original);
-  els.linkType.value = data.config.link_type || "Cloners";
-  setSelectedFields(data.config.clone_fields || []);
+    state.config = data;
+    els.jiraBaseUrl.value = data.base_url || "";
+    els.jiraAuthMode.value = data.auth_mode === "basic" ? "basic" : "pat";
+    els.jiraUser.value = data.user || "";
+    els.jiraToken.value = "";
+    els.jiraToken.placeholder = data.token_set ? "Token saved. Paste a new token to replace it." : "Paste current user's token";
+    els.summaryPrefix.value = data.config.summary_prefix || "";
+    els.targetProject.value = data.config.target_project || "";
+    els.linkOriginal.checked = Boolean(data.config.link_to_original);
+    els.linkType.value = data.config.link_type || "Cloners";
+    setSelectedFields(data.config.clone_fields || []);
 
-  const mode = data.auth_mode || "auto";
-  const user = data.user ? `, ${data.user}` : "";
-  setStatus(`${data.base_url || "No Jira URL"} - ${mode}${user} - token ${data.token_set ? "ready" : "missing"}`, data.token_set);
+    const mode = data.auth_mode || "auto";
+    const user = data.user ? `, ${data.user}` : "";
+    setStatus(`${data.base_url || "No Jira URL"} - ${mode}${user} - token ${data.token_set ? "ready" : "missing"}`, data.token_set);
+  } finally {
+    hideLoading();
+  }
 }
 
 async function saveConnection() {
@@ -97,6 +115,7 @@ async function saveConnection() {
   }
 
   els.saveConnection.disabled = true;
+  showLoading("Saving connection", "Updating local credential settings");
   try {
     const response = await fetch("/api/config", {
       method: "POST",
@@ -117,6 +136,7 @@ async function saveConnection() {
     renderError(error.message);
   } finally {
     els.saveConnection.disabled = false;
+    hideLoading();
   }
 }
 
@@ -144,7 +164,12 @@ function renderResults(items, dryRun) {
         ? `<span class="badge created">${jiraLink(item.clone)}</span>`
         : `<span class="badge ${item.status === "error" ? "error" : ""}">${escapeHtml(item.status)}</span>`;
       const payload = item.payload
-        ? `<pre>${escapeHtml(JSON.stringify(item.payload, null, 2))}</pre>`
+        ? `
+          <details class="payload-box">
+            <summary>Payload preview</summary>
+            <pre>${escapeHtml(JSON.stringify(item.payload, null, 2))}</pre>
+          </details>
+        `
         : "";
       const linkNote = item.link_error
         ? `<p class="summary">Link warning: ${escapeHtml(item.link_error)}</p>`
@@ -167,18 +192,20 @@ function renderResults(items, dryRun) {
         : "";
 
       return `
-        <article class="result-card">
-          <div class="result-top">
+        <article class="result-card status-${escapeHtml(item.status)}">
+          <header class="result-top">
             <div class="key-line">
               <span class="badge ${badgeClass}">${jiraLink(item.source)}</span>
               ${target}
             </div>
+          </header>
+          <div class="result-body">
+            ${item.summary ? `<p class="summary">${escapeHtml(item.summary)}</p>` : ""}
+            ${errorBlock}
+            ${warning}
+            ${linkNote}
+            ${payload}
           </div>
-          <p class="summary">${escapeHtml(item.summary || "")}</p>
-          ${errorBlock}
-          ${warning}
-          ${linkNote}
-          ${payload}
         </article>
       `;
     })
@@ -188,6 +215,10 @@ function renderResults(items, dryRun) {
 async function runClone(event) {
   event.preventDefault();
   setBusy(true);
+  showLoading(
+    els.dryRun.checked ? "Running preview" : "Creating cloned tickets",
+    "Processing tickets one by one"
+  );
 
   try {
     const dryRun = els.dryRun.checked;
@@ -211,6 +242,7 @@ async function runClone(event) {
     renderError(error.message);
   } finally {
     setBusy(false);
+    hideLoading();
   }
 }
 
@@ -232,6 +264,7 @@ els.results.addEventListener("click", async (event) => {
   const issueKey = button.dataset.issue;
   button.disabled = true;
   button.textContent = "Updating";
+  showLoading("Updating origin", `Setting component for ${issueKey}`);
 
   try {
     const response = await fetch("/api/component", {
@@ -248,6 +281,8 @@ els.results.addEventListener("click", async (event) => {
     button.disabled = false;
     button.textContent = "Update origin";
     renderError(error.message);
+  } finally {
+    hideLoading();
   }
 });
 
