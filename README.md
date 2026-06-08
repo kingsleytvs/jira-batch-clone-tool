@@ -77,6 +77,29 @@ Different users can update the Jira credential in the `Connection` section. Past
 
 The Batch page also supports uploading `.xlsx` or `.csv` files. The file must contain a column named `Issue key`; those values are loaded into the ticket list for Preview or Create.
 
+## Create
+
+The web UI also includes a `Create` page. The default project is:
+
+- Global Logistics S4 (`GLS4`)
+
+Open:
+
+```text
+http://127.0.0.1:8765/bug.html
+```
+
+Users can change the project key and select one of these issue types:
+
+- Bug
+- Epic
+- Story
+- Technical Story
+- PPS Bug
+- Test
+
+For `Bug`, the page includes a `Test Phase` field with `None`, `Standalone SIT`, and `DEV Test`.
+
 ## Publishing to GitHub
 
 This repository can be public as source code only. Do not publish live credentials or internal ticket lists.

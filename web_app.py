@@ -154,6 +154,27 @@ def parse_issue_key_file(filename, content_base64):
     raise RuntimeError("Please upload a .xlsx or .csv file.")
 
 
+def normalize_project_key(value):
+    raw = str(value or "").strip()
+    if not raw:
+        return "GLS4"
+
+    if "(" in raw and ")" in raw:
+        inside = raw.rsplit("(", 1)[1].split(")", 1)[0].strip()
+        if inside:
+            return inside
+
+    if "/browse/" in raw:
+        issue_part = raw.rsplit("/browse/", 1)[1].split("?", 1)[0]
+        if "-" in issue_part:
+            return issue_part.split("-", 1)[0].strip()
+
+    if "-" in raw and " " not in raw:
+        return raw.split("-", 1)[0].strip()
+
+    return raw
+
+
 def get_settings():
     load_dotenv(str(ENV_PATH))
     config = load_config(str(CONFIG_PATH))
@@ -298,6 +319,51 @@ def update_origin_component(issue_key):
     return expected_component
 
 
+def create_bug_issue(body):
+    config, base_url, user, token, auth_mode = get_settings()
+    if not base_url:
+        raise RuntimeError("Missing JIRA_BASE_URL in .env")
+    if not token:
+        raise RuntimeError("Missing JIRA_TOKEN in .env")
+
+    summary = body.get("summary", "").strip()
+    description = body.get("description", "").strip()
+    if not summary:
+        raise RuntimeError("Bug summary is required.")
+
+    project_key = normalize_project_key(body.get("project_key", "GLS4"))
+    issue_type = body.get("issue_type", "Bug").strip() or "Bug"
+
+    fields = {
+        "project": {"key": project_key},
+        "issuetype": {"name": issue_type},
+        "summary": summary,
+        "description": description,
+    }
+
+    priority_id = body.get("priority_id", "").strip()
+    if priority_id:
+        fields["priority"] = {"id": priority_id}
+
+    assignee = body.get("assignee", "").strip()
+    if assignee:
+        fields["assignee"] = {"name": assignee}
+
+    labels = body.get("labels", [])
+    if isinstance(labels, str):
+        labels = [label.strip() for label in labels.replace(",", "\n").splitlines()]
+    fields["labels"] = [label for label in labels if label]
+
+    client = JiraClient(base_url, user=user, token=token, auth_mode=auth_mode)
+    test_phase = body.get("test_phase", "").strip()
+    if issue_type == "Bug" and test_phase and test_phase.lower() != "none":
+        test_phase_field = resolve_clone_fields(client, ["Test Phase"])["Test Phase"]
+        fields[test_phase_field] = {"value": test_phase}
+
+    created = client.create_issue({"fields": fields})
+    return {"key": created["key"], "payload": {"fields": fields}, "base_url": base_url}
+
+
 class Handler(BaseHTTPRequestHandler):
     def log_message(self, format, *args):
         return
@@ -410,6 +476,17 @@ class Handler(BaseHTTPRequestHandler):
                 self.send_json(200, {"issue_keys": issue_keys, "count": len(issue_keys)})
             except RuntimeError as error:
                 self.send_json(400, {"error": str(error)})
+            except Exception as error:
+                self.send_json(500, {"error": f"Unexpected error: {error}"})
+            return
+
+        if self.path == "/api/bug":
+            try:
+                body = self.read_body()
+                result = create_bug_issue(body)
+                self.send_json(200, result)
+            except RuntimeError as error:
+                self.send_json(502, {"error": str(error)})
             except Exception as error:
                 self.send_json(500, {"error": f"Unexpected error: {error}"})
             return

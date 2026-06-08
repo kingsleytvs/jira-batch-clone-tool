@@ -1,0 +1,143 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Create - Jira Console</title>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <div class="loading-screen" id="loadingScreen" aria-live="polite">
+      <div class="loading-card">
+        <div class="loader"></div>
+        <div>
+          <strong id="loadingTitle">Loading</strong>
+          <p id="loadingText">Preparing bug form</p>
+        </div>
+      </div>
+    </div>
+
+    <header class="top-nav">
+      <div class="nav-inner">
+        <a class="brand" href="/" aria-label="Jira Console">
+          <span class="brand-mark">JC</span>
+          <span>Jira Console</span>
+        </a>
+        <nav class="nav-links" aria-label="Page navigation">
+          <a href="/connection.html">Connection</a>
+          <a href="/">Batch</a>
+          <a href="/bug.html" aria-current="page">Create</a>
+        </nav>
+        <div class="status-strip" id="connectionStatus">
+          <span class="pulse"></span>
+          Loading Jira profile
+        </div>
+      </div>
+    </header>
+
+    <main class="shell">
+      <section class="mast">
+        <div>
+          <p class="eyebrow">Jira Issue Intake</p>
+          <h1>Create</h1>
+          <p class="lead">Create an issue in the selected Jira project using the saved Jira connection.</p>
+        </div>
+      </section>
+
+      <section class="workspace">
+        <form class="panel control-panel" id="bugForm">
+          <section class="form-section">
+            <div class="panel-head">
+              <div>
+                <h2>Issue Details</h2>
+                <p>Default project Global Logistics S4 (GLS4)</p>
+              </div>
+            </div>
+
+            <div class="two-col">
+              <label class="field">
+                <span>Project</span>
+                <input id="issueProject" value="Global Logistics S4 (GLS4)" placeholder="Global Logistics S4 (GLS4)" />
+              </label>
+              <label class="field">
+                <span>Issue Type</span>
+                <select id="issueType">
+                  <option value="Bug">Bug</option>
+                  <option value="Epic">Epic</option>
+                  <option value="Story">Story</option>
+                  <option value="Technical Story">Technical Story</option>
+                  <option value="PPS Bug">PPS Bug</option>
+                  <option value="Test">Test</option>
+                </select>
+              </label>
+            </div>
+
+            <label class="field">
+              <span>Summary</span>
+              <input id="bugSummary" placeholder="Short bug title" required />
+            </label>
+
+            <label class="field tall">
+              <span>Description</span>
+              <textarea id="bugDescription" placeholder="What happened? Expected result? Actual result?"></textarea>
+            </label>
+
+            <div class="two-col">
+              <label class="field">
+                <span>Priority</span>
+                <select id="bugPriority">
+                  <option value="">Use Jira default</option>
+                  <option value="1">Highest</option>
+                  <option value="2">High</option>
+                  <option value="3">Medium</option>
+                  <option value="4">Low</option>
+                </select>
+              </label>
+              <label class="field">
+                <span>Assignee</span>
+                <input id="bugAssignee" placeholder="Optional Jira username" />
+              </label>
+            </div>
+
+            <label class="field" id="testPhaseField">
+              <span>Test Phase</span>
+              <select id="testPhase">
+                <option value="">None</option>
+                <option value="Standalone SIT">Standalone SIT</option>
+                <option value="DEV Test">DEV Test</option>
+              </select>
+            </label>
+
+            <label class="field">
+              <span>Labels</span>
+              <input id="bugLabels" placeholder="Comma separated labels" />
+            </label>
+          </section>
+
+          <div class="actions">
+            <button class="secondary" type="reset">Clear</button>
+            <button class="primary" type="submit" id="createBug">Create</button>
+          </div>
+        </form>
+
+        <section class="panel results-panel">
+          <div class="panel-head">
+            <div>
+              <h2>Bug Result</h2>
+              <p id="bugResultMeta">No bug created yet</p>
+            </div>
+          </div>
+
+          <div class="empty-state" id="bugEmptyState">
+            <div class="mark">BG</div>
+            <p>Created bug details will appear here.</p>
+          </div>
+
+          <div class="results" id="bugResults"></div>
+        </section>
+      </section>
+    </main>
+
+    <script src="/bug.js"></script>
+  </body>
+</html>

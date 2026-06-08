@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Connection Settings - Jira Console</title>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <div class="loading-screen" id="loadingScreen" aria-live="polite">
+      <div class="loading-card">
+        <div class="loader"></div>
+        <div>
+          <strong id="loadingTitle">Loading</strong>
+          <p id="loadingText">Preparing connection settings</p>
+        </div>
+      </div>
+    </div>
+
+    <header class="top-nav">
+      <div class="nav-inner">
+        <a class="brand" href="/" aria-label="Jira Console">
+          <span class="brand-mark">JC</span>
+          <span>Jira Console</span>
+        </a>
+        <nav class="nav-links" aria-label="Page navigation">
+          <a href="/connection.html" aria-current="page">Connection</a>
+          <a href="/">Batch</a>
+          <a href="/bug.html">Create</a>
+        </nav>
+        <div class="status-strip" id="connectionStatus">
+          <span class="pulse"></span>
+          Loading Jira profile
+        </div>
+      </div>
+    </header>
+
+    <main class="shell narrow-shell">
+      <section class="mast">
+        <div>
+          <p class="eyebrow">Credential Settings</p>
+          <h1>Connection</h1>
+          <p class="lead">Store the current user's Jira credential locally before running batch clone.</p>
+        </div>
+      </section>
+
+      <section class="panel settings-panel">
+        <form id="connectionForm">
+          <div class="panel-head">
+            <div>
+              <h2>Jira Access</h2>
+              <p>Saved to local .env only</p>
+            </div>
+            <a class="button-link secondary" href="/">Back to Batch</a>
+          </div>
+
+          <label class="field">
+            <span>Jira URL</span>
+            <input id="jiraBaseUrl" placeholder="https://jira.xpaas.lenovo.com" />
+          </label>
+
+          <div class="two-col">
+            <label class="field">
+              <span>Auth Mode</span>
+              <select id="jiraAuthMode">
+                <option value="pat">Personal Access Token</option>
+                <option value="basic">Basic Auth</option>
+              </select>
+            </label>
+            <label class="field">
+              <span>Jira User</span>
+              <input id="jiraUser" placeholder="Only needed for Basic Auth" />
+            </label>
+          </div>
+
+          <label class="field">
+            <span>Token</span>
+            <input id="jiraToken" type="password" autocomplete="off" placeholder="Paste current user's token" />
+          </label>
+
+          <div class="connection-note">
+            <strong>Token safety</strong>
+            <p>The token is not committed to GitHub. It is written only to the local .env file.</p>
+          </div>
+
+          <div class="actions">
+            <a class="button-link secondary" href="/">Cancel</a>
+            <button class="primary" type="submit" id="saveConnection">Save Connection</button>
+          </div>
+        </form>
+      </section>
+    </main>
+
+    <script src="/connection.js"></script>
+  </body>
+</html>
