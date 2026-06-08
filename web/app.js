@@ -142,7 +142,7 @@ function renderResults(items, dryRun) {
       const badgeClass = item.status === "created" ? "created" : "";
       const target = item.clone
         ? `<span class="badge created">${jiraLink(item.clone)}</span>`
-        : `<span class="badge">${escapeHtml(item.status)}</span>`;
+        : `<span class="badge ${item.status === "error" ? "error" : ""}">${escapeHtml(item.status)}</span>`;
       const payload = item.payload
         ? `<pre>${escapeHtml(JSON.stringify(item.payload, null, 2))}</pre>`
         : "";
@@ -162,6 +162,9 @@ function renderResults(items, dryRun) {
           </div>
         `
         : "";
+      const errorBlock = item.error
+        ? `<p class="summary error-text">${escapeHtml(item.error)}</p>`
+        : "";
 
       return `
         <article class="result-card">
@@ -172,6 +175,7 @@ function renderResults(items, dryRun) {
             </div>
           </div>
           <p class="summary">${escapeHtml(item.summary || "")}</p>
+          ${errorBlock}
           ${warning}
           ${linkNote}
           ${payload}

@@ -105,5 +105,6 @@ This is not a normal static webpage. It needs the Python backend because browser
 - Reporter and assignee are copied when Jira allows the current user to set those fields. If Jira rejects `reporter`, your account may need the Modify Reporter permission.
 - Custom fields can be listed by their Jira display name, such as `Background`, `Work Stream`, `Sub-workstream`, `Requirement Type`, or `IT Owner`. The tool resolves them to `customfield_xxxxx` automatically.
 - If the source component is not `S4 HANA(GLS4)`, the website shows a reminder and provides an `Update origin` button to update the original Jira ticket's component.
+- In the web UI, each ticket is processed independently. If one ticket fails, the result keeps that source ticket ID and the remaining tickets continue.
 - Attachments, comments, sub-tasks, sprint, status, created date, and history are not copied by this first version.
 - Keep `.env` private. Do not commit tokens.

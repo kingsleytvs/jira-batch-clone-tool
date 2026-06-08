@@ -153,6 +153,10 @@ p {
   overflow-wrap: anywhere;
 }
 
+.error-text {
+  color: var(--danger);
+}
+
 pre {
   width: 100%;
   max-width: 100%;

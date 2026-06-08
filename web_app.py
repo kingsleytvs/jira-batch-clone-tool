@@ -85,69 +85,78 @@ def clone_many(tickets, dry_run, target_project=None, overrides=None):
 
     results = []
     for ticket in tickets:
-        source_issue = client.get_issue(ticket, fields_to_read)
-        expected_component = config.get("expected_component", "S4 HANA(GLS4)")
-        source_components = get_component_names(source_issue)
-        component_warning = None
-        if (
-            "components" in config.get("clone_fields", [])
-            and expected_component
-            and expected_component not in source_components
-        ):
-            component_text = ", ".join(source_components) if source_components else "empty"
-            component_warning = {
-                "type": "origin_component_mismatch",
-                "message": (
-                    f"Origin component is {component_text}. "
-                    f"Click update to change the origin ticket component to {expected_component}."
-                ),
-                "source_components": source_components,
-                "expected_component": expected_component,
-            }
+        try:
+            source_issue = client.get_issue(ticket, fields_to_read)
+            expected_component = config.get("expected_component", "S4 HANA(GLS4)")
+            source_components = get_component_names(source_issue)
+            component_warning = None
+            if (
+                "components" in config.get("clone_fields", [])
+                and expected_component
+                and expected_component not in source_components
+            ):
+                component_text = ", ".join(source_components) if source_components else "empty"
+                component_warning = {
+                    "type": "origin_component_mismatch",
+                    "message": (
+                        f"Origin component is {component_text}. "
+                        f"Click update to change the origin ticket component to {expected_component}."
+                    ),
+                    "source_components": source_components,
+                    "expected_component": expected_component,
+                }
 
-        payload = build_payload(
-            source_issue,
-            config,
-            target_project=target_project,
-            resolved_fields=resolved_fields,
-        )
-        summary = payload["fields"]["summary"]
+            payload = build_payload(
+                source_issue,
+                config,
+                target_project=target_project,
+                resolved_fields=resolved_fields,
+            )
+            summary = payload["fields"]["summary"]
 
-        if dry_run:
+            if dry_run:
+                results.append(
+                    {
+                        "source": ticket,
+                        "summary": summary,
+                        "status": "preview",
+                        "payload": payload,
+                        "warning": component_warning,
+                    }
+                )
+                continue
+
+            created = client.create_issue(payload)
+            cloned_key = created["key"]
+            linked = False
+            link_error = None
+
+            if config.get("link_to_original", True):
+                try:
+                    client.link_issues(ticket, cloned_key, config.get("link_type", "Cloners"))
+                    linked = True
+                except RuntimeError as error:
+                    link_error = str(error)
+
             results.append(
                 {
                     "source": ticket,
                     "summary": summary,
-                    "status": "preview",
-                    "payload": payload,
+                    "clone": cloned_key,
+                    "status": "created",
+                    "linked": linked,
+                    "link_error": link_error,
                     "warning": component_warning,
                 }
             )
-            continue
-
-        created = client.create_issue(payload)
-        cloned_key = created["key"]
-        linked = False
-        link_error = None
-
-        if config.get("link_to_original", True):
-            try:
-                client.link_issues(ticket, cloned_key, config.get("link_type", "Cloners"))
-                linked = True
-            except RuntimeError as error:
-                link_error = str(error)
-
-        results.append(
-            {
-                "source": ticket,
-                "summary": summary,
-                "clone": cloned_key,
-                "status": "created",
-                "linked": linked,
-                "link_error": link_error,
-                "warning": component_warning,
-            }
-        )
+        except RuntimeError as error:
+            results.append(
+                {
+                    "source": ticket,
+                    "status": "error",
+                    "error": str(error),
+                }
+            )
 
     return results
 
