@@ -7,13 +7,10 @@ const els = {
   loadingTitle: document.querySelector("#loadingTitle"),
   loadingText: document.querySelector("#loadingText"),
   connectionStatus: document.querySelector("#connectionStatus"),
-  jiraBaseUrl: document.querySelector("#jiraBaseUrl"),
-  jiraAuthMode: document.querySelector("#jiraAuthMode"),
-  jiraUser: document.querySelector("#jiraUser"),
-  jiraToken: document.querySelector("#jiraToken"),
-  saveConnection: document.querySelector("#saveConnection"),
   form: document.querySelector("#cloneForm"),
   tickets: document.querySelector("#tickets"),
+  issueFile: document.querySelector("#issueFile"),
+  uploadStatus: document.querySelector("#uploadStatus"),
   dryRun: document.querySelector("#dryRun"),
   summaryPrefix: document.querySelector("#summaryPrefix"),
   targetProject: document.querySelector("#targetProject"),
@@ -79,6 +76,51 @@ function escapeHtml(value) {
     .replaceAll("'", "&#039;");
 }
 
+function fileToBase64(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const value = String(reader.result || "");
+      resolve(value.includes(",") ? value.split(",")[1] : value);
+    };
+    reader.onerror = () => reject(reader.error);
+    reader.readAsDataURL(file);
+  });
+}
+
+async function uploadIssueFile(event) {
+  const file = event.target.files?.[0];
+  if (!file) {
+    return;
+  }
+
+  showLoading("Reading issue list", "Extracting Issue key values from the uploaded file");
+  els.uploadStatus.textContent = "";
+
+  try {
+    const contentBase64 = await fileToBase64(file);
+    const response = await fetch("/api/issue-keys", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        filename: file.name,
+        content_base64: contentBase64,
+      }),
+    });
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.error || "Could not read issue keys");
+
+    els.tickets.value = (data.issue_keys || []).join("\n");
+    els.uploadStatus.textContent = `${data.count} issue key${data.count === 1 ? "" : "s"} loaded from ${file.name}.`;
+  } catch (error) {
+    els.uploadStatus.textContent = "";
+    renderError(error.message);
+  } finally {
+    event.target.value = "";
+    hideLoading();
+  }
+}
+
 async function loadConfig() {
   showLoading("Loading", "Reading local Jira configuration");
   setStatus("Loading Jira profile");
@@ -88,11 +130,6 @@ async function loadConfig() {
     if (!response.ok) throw new Error(data.error || "Could not load config");
 
     state.config = data;
-    els.jiraBaseUrl.value = data.base_url || "";
-    els.jiraAuthMode.value = data.auth_mode === "basic" ? "basic" : "pat";
-    els.jiraUser.value = data.user || "";
-    els.jiraToken.value = "";
-    els.jiraToken.placeholder = data.token_set ? "Token saved. Paste a new token to replace it." : "Paste current user's token";
     els.summaryPrefix.value = data.config.summary_prefix || "";
     els.targetProject.value = data.config.target_project || "";
     els.linkOriginal.checked = Boolean(data.config.link_to_original);
@@ -103,39 +140,6 @@ async function loadConfig() {
     const user = data.user ? `, ${data.user}` : "";
     setStatus(`${data.base_url || "No Jira URL"} - ${mode}${user} - token ${data.token_set ? "ready" : "missing"}`, data.token_set);
   } finally {
-    hideLoading();
-  }
-}
-
-async function saveConnection() {
-  const token = els.jiraToken.value.trim();
-  if (!token) {
-    renderError("Please paste the current user's Jira token before saving.");
-    return;
-  }
-
-  els.saveConnection.disabled = true;
-  showLoading("Saving connection", "Updating local credential settings");
-  try {
-    const response = await fetch("/api/config", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        base_url: els.jiraBaseUrl.value.trim(),
-        auth_mode: els.jiraAuthMode.value,
-        user: els.jiraUser.value.trim(),
-        token,
-      }),
-    });
-    const data = await response.json();
-    if (!response.ok) throw new Error(data.error || "Could not save connection");
-    els.jiraToken.value = "";
-    await loadConfig();
-    els.resultMeta.textContent = "Connection saved";
-  } catch (error) {
-    renderError(error.message);
-  } finally {
-    els.saveConnection.disabled = false;
     hideLoading();
   }
 }
@@ -247,7 +251,7 @@ async function runClone(event) {
 }
 
 els.form.addEventListener("submit", runClone);
-els.saveConnection.addEventListener("click", saveConnection);
+els.issueFile.addEventListener("change", uploadIssueFile);
 els.dryRun.addEventListener("change", () => setBusy(false));
 els.loadConfig.addEventListener("click", () => loadConfig().catch((error) => renderError(error.message)));
 els.clearResults.addEventListener("click", () => {

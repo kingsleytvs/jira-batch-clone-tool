@@ -1,7 +1,12 @@
 #!/usr/bin/env python3
+import base64
+import csv
+import io
 import json
 import os
 import urllib.parse
+import xml.etree.ElementTree as ET
+import zipfile
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
@@ -28,6 +33,125 @@ def parse_tickets(value):
         if ticket and not ticket.startswith("#"):
             tickets.append(ticket)
     return tickets
+
+
+def normalize_header(value):
+    return " ".join(str(value or "").strip().lower().replace("_", " ").replace("-", " ").split())
+
+
+def unique_issue_keys(values):
+    keys = []
+    seen = set()
+    for value in values:
+        key = str(value or "").strip()
+        if not key or key.lower() == "none":
+            continue
+        if key not in seen:
+            seen.add(key)
+            keys.append(key)
+    return keys
+
+
+def column_values_from_rows(rows, header_name="Issue key"):
+    if not rows:
+        return []
+
+    expected = normalize_header(header_name)
+    headers = [normalize_header(value) for value in rows[0]]
+    if expected not in headers:
+        raise RuntimeError("Could not find a column named 'Issue key'.")
+
+    index = headers.index(expected)
+    return unique_issue_keys(row[index] if index < len(row) else "" for row in rows[1:])
+
+
+def parse_csv_issue_keys(data):
+    text = data.decode("utf-8-sig", errors="replace")
+    rows = list(csv.reader(io.StringIO(text)))
+    return column_values_from_rows(rows)
+
+
+def excel_column_index(cell_ref):
+    letters = "".join(ch for ch in cell_ref if ch.isalpha())
+    index = 0
+    for char in letters:
+        index = index * 26 + (ord(char.upper()) - ord("A") + 1)
+    return max(index - 1, 0)
+
+
+def parse_shared_strings(zip_file):
+    try:
+        xml_bytes = zip_file.read("xl/sharedStrings.xml")
+    except KeyError:
+        return []
+
+    root = ET.fromstring(xml_bytes)
+    namespace = {"x": "http://schemas.openxmlformats.org/spreadsheetml/2006/main"}
+    values = []
+    for item in root.findall("x:si", namespace):
+        texts = [node.text or "" for node in item.findall(".//x:t", namespace)]
+        values.append("".join(texts))
+    return values
+
+
+def parse_xlsx_issue_keys(data):
+    with zipfile.ZipFile(io.BytesIO(data)) as zip_file:
+        shared_strings = parse_shared_strings(zip_file)
+        workbook = ET.fromstring(zip_file.read("xl/workbook.xml"))
+        namespace = {
+            "x": "http://schemas.openxmlformats.org/spreadsheetml/2006/main",
+            "r": "http://schemas.openxmlformats.org/officeDocument/2006/relationships",
+        }
+        first_sheet = workbook.find("x:sheets/x:sheet", namespace)
+        if first_sheet is None:
+            raise RuntimeError("The Excel file does not contain any sheets.")
+
+        relationship_id = first_sheet.attrib.get("{http://schemas.openxmlformats.org/officeDocument/2006/relationships}id")
+        relationships = ET.fromstring(zip_file.read("xl/_rels/workbook.xml.rels"))
+        rel_namespace = {"rel": "http://schemas.openxmlformats.org/package/2006/relationships"}
+        sheet_target = None
+        for rel in relationships.findall("rel:Relationship", rel_namespace):
+            if rel.attrib.get("Id") == relationship_id:
+                sheet_target = rel.attrib.get("Target")
+                break
+
+        if not sheet_target:
+            raise RuntimeError("Could not locate the first worksheet.")
+
+        sheet_path = "xl/" + sheet_target.lstrip("/")
+        sheet = ET.fromstring(zip_file.read(sheet_path))
+        rows = []
+        sheet_namespace = {"x": "http://schemas.openxmlformats.org/spreadsheetml/2006/main"}
+        for row in sheet.findall(".//x:sheetData/x:row", sheet_namespace):
+            values = []
+            for cell in row.findall("x:c", sheet_namespace):
+                index = excel_column_index(cell.attrib.get("r", "A1"))
+                while len(values) <= index:
+                    values.append("")
+
+                cell_type = cell.attrib.get("t")
+                value_node = cell.find("x:v", sheet_namespace)
+                inline_node = cell.find("x:is/x:t", sheet_namespace)
+                raw = value_node.text if value_node is not None else ""
+                if cell_type == "s" and raw:
+                    values[index] = shared_strings[int(raw)]
+                elif cell_type == "inlineStr" and inline_node is not None:
+                    values[index] = inline_node.text or ""
+                else:
+                    values[index] = raw or ""
+            rows.append(values)
+
+        return column_values_from_rows(rows)
+
+
+def parse_issue_key_file(filename, content_base64):
+    data = base64.b64decode(content_base64)
+    lower_name = filename.lower()
+    if lower_name.endswith(".xlsx"):
+        return parse_xlsx_issue_keys(data)
+    if lower_name.endswith(".csv"):
+        return parse_csv_issue_keys(data)
+    raise RuntimeError("Please upload a .xlsx or .csv file.")
 
 
 def get_settings():
@@ -270,6 +394,22 @@ class Handler(BaseHTTPRequestHandler):
                 self.send_json(200, {"issue_key": issue_key, "component": component})
             except RuntimeError as error:
                 self.send_json(502, {"error": str(error)})
+            except Exception as error:
+                self.send_json(500, {"error": f"Unexpected error: {error}"})
+            return
+
+        if self.path == "/api/issue-keys":
+            try:
+                body = self.read_body()
+                filename = body.get("filename", "")
+                content_base64 = body.get("content_base64", "")
+                if not filename or not content_base64:
+                    self.send_json(400, {"error": "Missing uploaded file."})
+                    return
+                issue_keys = parse_issue_key_file(filename, content_base64)
+                self.send_json(200, {"issue_keys": issue_keys, "count": len(issue_keys)})
+            except RuntimeError as error:
+                self.send_json(400, {"error": str(error)})
             except Exception as error:
                 self.send_json(500, {"error": f"Unexpected error: {error}"})
             return

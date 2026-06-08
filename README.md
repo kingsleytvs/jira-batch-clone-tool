@@ -75,6 +75,8 @@ The website reads Jira credentials from `.env` and clone behavior from `clone-co
 
 Different users can update the Jira credential in the `Connection` section. Paste the current user's token, choose `Personal Access Token` or `Basic Auth`, then click `Save`.
 
+The Batch page also supports uploading `.xlsx` or `.csv` files. The file must contain a column named `Issue key`; those values are loaded into the ticket list for Preview or Create.
+
 ## Publishing to GitHub
 
 This repository can be public as source code only. Do not publish live credentials or internal ticket lists.

@@ -24,7 +24,7 @@
           <span>Jira Clone Console</span>
         </a>
         <nav class="nav-links" aria-label="Page navigation">
-          <a href="#connection">Connection</a>
+          <a href="/connection.html">Connection</a>
           <a href="#batch">Batch</a>
           <a href="#resultsPanel">Results</a>
         </nav>
@@ -46,40 +46,6 @@
 
       <section class="workspace">
         <form class="panel control-panel" id="cloneForm">
-          <section class="form-section" id="connection">
-            <div class="panel-head compact-head">
-              <div>
-                <h2>Connection</h2>
-                <p>Use current user's Jira credential</p>
-              </div>
-              <button class="secondary" type="button" id="saveConnection">Save</button>
-            </div>
-
-            <label class="field">
-              <span>Jira URL</span>
-              <input id="jiraBaseUrl" placeholder="https://jira.xpaas.lenovo.com" />
-            </label>
-
-            <div class="two-col">
-              <label class="field">
-                <span>Auth Mode</span>
-                <select id="jiraAuthMode">
-                  <option value="pat">Personal Access Token</option>
-                  <option value="basic">Basic Auth</option>
-                </select>
-              </label>
-              <label class="field">
-                <span>Jira User</span>
-                <input id="jiraUser" placeholder="Only needed for Basic Auth" />
-              </label>
-            </div>
-
-            <label class="field">
-              <span>Token</span>
-              <input id="jiraToken" type="password" autocomplete="off" placeholder="Paste current user's token" />
-            </label>
-          </section>
-
           <section class="form-section" id="batch">
             <div class="panel-head">
               <div>
@@ -99,6 +65,18 @@
 GLS4-5521
 GLS4-5781</textarea>
             </label>
+
+            <div class="upload-box">
+              <div>
+                <strong>Upload Issue List</strong>
+                <p>Use an Excel or CSV file with a column named Issue key.</p>
+              </div>
+              <label class="upload-button">
+                <input id="issueFile" type="file" accept=".xlsx,.csv" />
+                Choose file
+              </label>
+            </div>
+            <p class="upload-status" id="uploadStatus"></p>
 
             <div class="two-col">
               <label class="field">
