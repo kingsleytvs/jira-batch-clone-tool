@@ -1,0 +1,146 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Jira Clone Console</title>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <main class="shell">
+      <section class="mast">
+        <div>
+          <p class="eyebrow">Jira Batch Operations</p>
+          <h1>Clone Console</h1>
+        </div>
+        <div class="status-strip" id="connectionStatus">
+          <span class="pulse"></span>
+          Loading Jira profile
+        </div>
+      </section>
+
+      <section class="workspace">
+        <form class="panel control-panel" id="cloneForm">
+          <div class="connection-box">
+            <div class="panel-head compact-head">
+              <div>
+                <h2>Connection</h2>
+                <p>Use current user's Jira credential</p>
+              </div>
+              <button class="secondary" type="button" id="saveConnection">Save</button>
+            </div>
+
+            <label class="field">
+              <span>Jira URL</span>
+              <input id="jiraBaseUrl" placeholder="https://jira.xpaas.lenovo.com" />
+            </label>
+
+            <div class="two-col">
+              <label class="field">
+                <span>Auth Mode</span>
+                <select id="jiraAuthMode">
+                  <option value="pat">Personal Access Token</option>
+                  <option value="basic">Basic Auth</option>
+                </select>
+              </label>
+              <label class="field">
+                <span>Jira User</span>
+                <input id="jiraUser" placeholder="Only needed for Basic Auth" />
+              </label>
+            </div>
+
+            <label class="field">
+              <span>Token</span>
+              <input id="jiraToken" type="password" autocomplete="off" placeholder="Paste current user's token" />
+            </label>
+          </div>
+
+          <div class="panel-head">
+            <div>
+              <h2>Batch Input</h2>
+              <p>One ticket per line</p>
+            </div>
+            <label class="switch">
+              <input type="checkbox" id="dryRun" checked />
+              <span></span>
+              Preview
+            </label>
+          </div>
+
+          <label class="field tall">
+            <span>Ticket IDs</span>
+            <textarea id="tickets" spellcheck="false">GLS4-5780
+GLS4-5521
+GLS4-5781</textarea>
+          </label>
+
+          <div class="two-col">
+            <label class="field">
+              <span>Summary Prefix</span>
+              <input id="summaryPrefix" value="CLONE - " />
+            </label>
+            <label class="field">
+              <span>Target Project</span>
+              <input id="targetProject" placeholder="Use source project" />
+            </label>
+          </div>
+
+          <div class="field-group">
+            <span>Copy Fields</span>
+            <div class="chips" id="fieldChips">
+              <label><input type="checkbox" value="description" checked /> Description</label>
+              <label><input type="checkbox" value="priority" checked /> Priority</label>
+              <label><input type="checkbox" value="labels" checked /> Labels</label>
+              <label><input type="checkbox" value="reporter" checked /> Reporter</label>
+              <label><input type="checkbox" value="assignee" checked /> Assignee</label>
+              <label><input type="checkbox" value="components" checked /> Components</label>
+              <label><input type="checkbox" value="Background" checked /> Background</label>
+              <label><input type="checkbox" value="Work Stream" checked /> Work Stream</label>
+              <label><input type="checkbox" value="Sub-workstream" checked /> Sub-workstream</label>
+              <label><input type="checkbox" value="Requirement Type" checked /> Requirement Type</label>
+              <label><input type="checkbox" value="IT Owner" checked /> IT Owner</label>
+              <label><input type="checkbox" value="fixVersions" /> Fix Versions</label>
+              <label><input type="checkbox" value="versions" /> Affects Versions</label>
+            </div>
+          </div>
+
+          <div class="two-col">
+            <label class="switch in-row">
+              <input type="checkbox" id="linkOriginal" checked />
+              <span></span>
+              Link original
+            </label>
+            <label class="field compact">
+              <span>Link Type</span>
+              <input id="linkType" value="Cloners" />
+            </label>
+          </div>
+
+          <div class="actions">
+            <button class="secondary" type="button" id="loadConfig">Reload Config</button>
+            <button class="primary" type="submit" id="runButton">Run Preview</button>
+          </div>
+        </form>
+
+        <section class="panel results-panel">
+          <div class="panel-head">
+            <div>
+              <h2>Run Ledger</h2>
+              <p id="resultMeta">No run yet</p>
+            </div>
+            <button class="secondary icon-only" type="button" id="clearResults" title="Clear results">Clear</button>
+          </div>
+
+          <div class="empty-state" id="emptyState">
+            <div class="mark">JC</div>
+            <p>Preview or create cloned stories from the left panel.</p>
+          </div>
+
+          <div class="results" id="results"></div>
+        </section>
+      </section>
+    </main>
+
+    <script src="/app.js"></script>
+  </body>
+</html>

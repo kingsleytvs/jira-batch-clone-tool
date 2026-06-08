@@ -1,0 +1,23 @@
+{
+  "summary_prefix": "CLONE - ",
+  "target_project": null,
+  "expected_component": "S4 HANA(GLS4)",
+  "clone_fields": [
+    "description",
+    "priority",
+    "labels",
+    "reporter",
+    "assignee",
+    "components",
+    "Background",
+    "Work Stream",
+    "Sub-workstream",
+    "Requirement Type",
+    "IT Owner",
+    "versions",
+    "fixVersions"
+  ],
+  "defaults": {},
+  "link_to_original": true,
+  "link_type": "Cloners"
+}

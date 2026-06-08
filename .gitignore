@@ -1,0 +1,5 @@
+.env
+clone-config.json
+tickets.txt
+__pycache__/
+*.pyc
