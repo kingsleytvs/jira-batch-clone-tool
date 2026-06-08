@@ -122,16 +122,43 @@ p {
 
 .workspace {
   display: grid;
-  grid-template-columns: minmax(340px, 0.82fr) minmax(440px, 1.18fr);
+  grid-template-columns: minmax(340px, 0.82fr) minmax(0, 1.18fr);
   gap: 20px;
   align-items: start;
 }
 
 .panel {
+  min-width: 0;
   border: 1px solid var(--line);
   border-radius: var(--radius);
   background: var(--surface);
   box-shadow: var(--shadow);
+}
+
+.control-panel,
+.results-panel {
+  min-width: 0;
+  overflow: hidden;
+}
+
+.results {
+  min-width: 0;
+}
+
+.result-card {
+  min-width: 0;
+}
+
+.summary {
+  overflow-wrap: anywhere;
+}
+
+pre {
+  width: 100%;
+  max-width: 100%;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 .control-panel,
