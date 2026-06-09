@@ -214,6 +214,10 @@ def save_env_settings(base_url, auth_mode, user, token):
 def clone_many(tickets, dry_run, target_project=None, overrides=None):
     config, base_url, user, token, auth_mode = get_settings()
     if overrides:
+        if "clone_fields" in overrides:
+            configured_fields = config.get("clone_fields", [])
+            requested_fields = overrides.get("clone_fields") or []
+            overrides["clone_fields"] = list(dict.fromkeys([*requested_fields, *configured_fields]))
         config.update(overrides)
     if not base_url:
         raise RuntimeError("Missing JIRA_BASE_URL in .env")

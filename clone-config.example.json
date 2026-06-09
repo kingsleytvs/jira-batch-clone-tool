@@ -10,14 +10,22 @@
     "assignee",
     "components",
     "Background",
+    "Acceptance Criteria",
     "Work Stream",
     "Sub-workstream",
     "Requirement Type",
     "IT Owner",
-    "versions",
-    "fixVersions"
+    "Cancel Reason",
+    "Epic Link"
   ],
-  "defaults": {},
+  "defaults": {
+    "customfield_10304": {
+      "id": "22172"
+    },
+    "customfield_18403": {
+      "id": "23773"
+    }
+  },
   "link_to_original": true,
   "link_type": "Cloners"
 }
