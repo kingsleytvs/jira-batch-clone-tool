@@ -345,16 +345,24 @@ def create_bug_issue(body):
     if priority_id:
         fields["priority"] = {"id": priority_id}
 
-    assignee = body.get("assignee", "").strip()
-    if assignee:
-        fields["assignee"] = {"name": assignee}
-
     labels = body.get("labels", [])
     if isinstance(labels, str):
         labels = [label.strip() for label in labels.replace(",", "\n").splitlines()]
     fields["labels"] = [label for label in labels if label]
 
+    components = body.get("components", "S4 HANA(GLS4)")
+    if isinstance(components, str):
+        components = [component.strip() for component in components.replace(",", "\n").splitlines()]
+    clean_components = [component for component in components if component]
+    if clean_components:
+        fields["components"] = [{"name": component} for component in clean_components]
+
     client = JiraClient(base_url, user=user, token=token, auth_mode=auth_mode)
+    current_user = client.get_myself()
+    reporter_name = current_user.get("name")
+    if reporter_name:
+        fields["assignee"] = {"name": reporter_name}
+
     test_phase = body.get("test_phase", "").strip()
     if issue_type == "Bug" and test_phase and test_phase.lower() != "none":
         test_phase_field = resolve_clone_fields(client, ["Test Phase"])["Test Phase"]
@@ -362,6 +370,49 @@ def create_bug_issue(body):
 
     created = client.create_issue({"fields": fields})
     return {"key": created["key"], "payload": {"fields": fields}, "base_url": base_url}
+
+
+def get_issue_transitions(issue_key):
+    config, base_url, user, token, auth_mode = get_settings()
+    if not base_url:
+        raise RuntimeError("Missing JIRA_BASE_URL in .env")
+    if not token:
+        raise RuntimeError("Missing JIRA_TOKEN in .env")
+
+    client = JiraClient(base_url, user=user, token=token, auth_mode=auth_mode)
+    issue = client.get_issue(issue_key, ["status"])
+    current_status = issue.get("fields", {}).get("status", {}).get("name")
+    data = client.get_transitions(issue_key)
+    transitions = []
+    for transition in data.get("transitions", []):
+        target = transition.get("to", {})
+        transitions.append(
+            {
+                "id": transition.get("id"),
+                "name": transition.get("name"),
+                "to_status": target.get("name"),
+            }
+        )
+    return {"current_status": current_status, "transitions": transitions}
+
+
+def update_issue_transition(issue_key, transition_id, bug_category=None):
+    config, base_url, user, token, auth_mode = get_settings()
+    if not base_url:
+        raise RuntimeError("Missing JIRA_BASE_URL in .env")
+    if not token:
+        raise RuntimeError("Missing JIRA_TOKEN in .env")
+    if not issue_key:
+        raise RuntimeError("Missing issue key.")
+    if not transition_id:
+        raise RuntimeError("Missing transition.")
+
+    client = JiraClient(base_url, user=user, token=token, auth_mode=auth_mode)
+    fields = {}
+    if bug_category and bug_category.lower() != "none":
+        fields["customfield_11850"] = {"value": bug_category}
+    client.transition_issue(issue_key, transition_id, fields=fields)
+    return get_issue_transitions(issue_key)
 
 
 class Handler(BaseHTTPRequestHandler):
@@ -485,6 +536,46 @@ class Handler(BaseHTTPRequestHandler):
                 body = self.read_body()
                 result = create_bug_issue(body)
                 self.send_json(200, result)
+            except RuntimeError as error:
+                self.send_json(502, {"error": str(error)})
+            except Exception as error:
+                self.send_json(500, {"error": f"Unexpected error: {error}"})
+            return
+
+        if self.path == "/api/transitions":
+            try:
+                body = self.read_body()
+                issue_key = body.get("issue_key", "").strip()
+                if not issue_key:
+                    self.send_json(400, {"error": "Missing issue key."})
+                    return
+
+                if body.get("transition_id"):
+                    workflow = update_issue_transition(
+                        issue_key,
+                        body.get("transition_id"),
+                        bug_category=body.get("bug_category", ""),
+                    )
+                    self.send_json(
+                        200,
+                        {
+                            "issue_key": issue_key,
+                            "updated": True,
+                            "current_status": workflow["current_status"],
+                            "transitions": workflow["transitions"],
+                        },
+                    )
+                else:
+                    workflow = get_issue_transitions(issue_key)
+                    self.send_json(
+                        200,
+                        {
+                            "issue_key": issue_key,
+                            "updated": False,
+                            "current_status": workflow["current_status"],
+                            "transitions": workflow["transitions"],
+                        },
+                    )
             except RuntimeError as error:
                 self.send_json(502, {"error": str(error)})
             except Exception as error:

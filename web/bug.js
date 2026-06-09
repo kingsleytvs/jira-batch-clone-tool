@@ -13,9 +13,9 @@ const els = {
   summary: document.querySelector("#bugSummary"),
   description: document.querySelector("#bugDescription"),
   priority: document.querySelector("#bugPriority"),
-  assignee: document.querySelector("#bugAssignee"),
   testPhaseField: document.querySelector("#testPhaseField"),
   testPhase: document.querySelector("#testPhase"),
+  components: document.querySelector("#bugComponents"),
   labels: document.querySelector("#bugLabels"),
   createBug: document.querySelector("#createBug"),
   emptyState: document.querySelector("#bugEmptyState"),
@@ -84,6 +84,88 @@ function renderError(error) {
   `);
 }
 
+function renderTransitions(issueKey, workflow) {
+  const transitions = workflow.transitions || [];
+  const currentStatus = workflow.current_status || "Unknown";
+  if (!transitions.length) {
+    return `
+      <div class="transition-box">
+        <div class="transition-head">
+          <div>
+            <strong>Workflow</strong>
+            <p>No available workflow transition for ${escapeHtml(issueKey)}.</p>
+          </div>
+          <span class="status-pill">${escapeHtml(currentStatus)}</span>
+        </div>
+      </div>
+    `;
+  }
+
+  const options = transitions
+    .map((transition) => {
+      const label = transition.to_status
+        ? `${transition.name} -> ${transition.to_status}`
+        : transition.name;
+      return `<option value="${escapeHtml(transition.id)}">${escapeHtml(label)}</option>`;
+    })
+    .join("");
+
+  return `
+    <div class="transition-box" data-issue="${escapeHtml(issueKey)}">
+      <div class="transition-head">
+        <div>
+          <strong>Workflow</strong>
+          <p>Current status and available next actions from Jira.</p>
+        </div>
+        <span class="status-pill">${escapeHtml(currentStatus)}</span>
+      </div>
+      <div class="transition-actions">
+        <label class="transition-field">
+          <span>Next Status</span>
+          <select class="transition-select">${options}</select>
+        </label>
+        <label class="transition-field bug-category-field" hidden>
+          <span>Bug Category</span>
+          <select class="bug-category-select">
+            <option value="">None</option>
+            <option value="Authorization">Authorization</option>
+            <option value="Biz Design Issue">Biz Design Issue</option>
+            <option value="IT Design Issue">IT Design Issue</option>
+            <option value="Configuration">Configuration</option>
+            <option value="Code Bug">Code Bug</option>
+            <option value="Previous Release Issue">Previous Release Issue</option>
+            <option value="Partner Issue">Partner Issue</option>
+            <option value="Product Issue">Product Issue</option>
+            <option value="Data Issue">Data Issue</option>
+            <option value="Data Migration">Data Migration</option>
+            <option value="Integration">Integration</option>
+            <option value="IT Transport">IT Transport</option>
+            <option value="Network / Infrastructure Issue">Network / Infrastructure Issue</option>
+            <option value="System Performance Issue">System Performance Issue</option>
+            <option value="Environment Readiness">Environment Readiness</option>
+            <option value="Other">Other</option>
+          </select>
+        </label>
+        <button class="secondary transition-button" type="button">Update Status</button>
+      </div>
+    </div>
+  `;
+}
+
+async function fetchTransitions(issueKey) {
+  const response = await fetch("/api/transitions", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ issue_key: issueKey }),
+  });
+  const data = await response.json();
+  if (!response.ok) throw new Error(data.error || "Could not load transitions");
+  return {
+    current_status: data.current_status,
+    transitions: data.transitions || [],
+  };
+}
+
 async function createBug(event) {
   event.preventDefault();
   els.createBug.disabled = true;
@@ -100,14 +182,15 @@ async function createBug(event) {
         summary: els.summary.value.trim(),
         description: els.description.value.trim(),
         priority_id: els.priority.value,
-        assignee: els.assignee.value.trim(),
         test_phase: issueType === "Bug" ? els.testPhase.value : "",
+        components: els.components.value,
         labels: els.labels.value,
       }),
     });
     const data = await response.json();
     if (!response.ok) throw new Error(data.error || "Could not create bug");
 
+    const workflow = await fetchTransitions(data.key);
     els.resultMeta.textContent = `${data.key} created`;
     renderResult(`
       <article class="result-card status-created">
@@ -119,6 +202,7 @@ async function createBug(event) {
         </header>
         <div class="result-body">
           <p class="summary">${escapeHtml(els.summary.value.trim())}</p>
+          ${renderTransitions(data.key, workflow)}
           <details class="payload-box">
             <summary>Payload</summary>
             <pre>${escapeHtml(JSON.stringify(data.payload, null, 2))}</pre>
@@ -126,11 +210,71 @@ async function createBug(event) {
         </div>
       </article>
     `);
+    document.querySelectorAll(".transition-box").forEach(syncBugCategoryVisibility);
   } catch (error) {
     renderError(error.message);
   } finally {
     els.createBug.disabled = false;
     hideLoading();
+  }
+}
+
+async function updateTransition(event) {
+  const button = event.target.closest(".transition-button");
+  if (!button) {
+    return;
+  }
+
+  const box = button.closest(".transition-box");
+  const issueKey = box.dataset.issue;
+  const transitionId = box.querySelector(".transition-select").value;
+  const bugCategorySelect = box.querySelector(".bug-category-select");
+  const bugCategoryField = box.querySelector(".bug-category-field");
+  const bugCategory = bugCategoryField.hidden ? "" : bugCategorySelect.value;
+
+  button.disabled = true;
+  showLoading("Updating status", `Applying workflow transition to ${issueKey}`);
+
+  try {
+    const response = await fetch("/api/transitions", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        issue_key: issueKey,
+        transition_id: transitionId,
+        bug_category: bugCategory,
+      }),
+    });
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.error || "Could not update status");
+
+    box.outerHTML = renderTransitions(issueKey, {
+      current_status: data.current_status,
+      transitions: data.transitions || [],
+    });
+    document.querySelectorAll(".transition-box").forEach(syncBugCategoryVisibility);
+    els.resultMeta.textContent = `${issueKey} status updated`;
+  } catch (error) {
+    renderError(error.message);
+  } finally {
+    button.disabled = false;
+    hideLoading();
+  }
+}
+
+function syncBugCategoryVisibility(box) {
+  const transitionSelect = box.querySelector(".transition-select");
+  const bugCategoryField = box.querySelector(".bug-category-field");
+  const bugCategorySelect = box.querySelector(".bug-category-select");
+  if (!transitionSelect || !bugCategoryField || !bugCategorySelect) {
+    return;
+  }
+
+  const selectedText = transitionSelect.options[transitionSelect.selectedIndex]?.text || "";
+  const needsBugCategory = selectedText.toLowerCase().includes("ready for testing");
+  bugCategoryField.hidden = !needsBugCategory;
+  if (!needsBugCategory) {
+    bugCategorySelect.value = "";
   }
 }
 
@@ -144,5 +288,11 @@ function syncIssueTypeFields() {
 
 els.issueType.addEventListener("change", syncIssueTypeFields);
 els.form.addEventListener("submit", createBug);
+els.results.addEventListener("click", updateTransition);
+els.results.addEventListener("change", (event) => {
+  if (event.target.classList.contains("transition-select")) {
+    syncBugCategoryVisibility(event.target.closest(".transition-box"));
+  }
+});
 syncIssueTypeFields();
 loadConfig().catch((error) => renderError(error.message));

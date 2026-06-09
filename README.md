@@ -100,6 +100,14 @@ Users can change the project key and select one of these issue types:
 
 For `Bug`, the page includes a `Test Phase` field with `None`, `Standalone SIT`, and `DEV Test`.
 
+The Create page also includes a `Component` selector. It defaults to `S4 HANA(GLS4)`, with `LLGW`, `S4 HANA(GLS4)`, and `global Logisite` as options.
+
+After an issue is created, the page loads its available Jira workflow transitions and shows an `Update Status` control.
+
+Some workflow transitions require `Bug Category`. The Bug Category selector is shown only when the selected transition is `Ready for Testing`.
+
+For newly created issues, assignee is automatically set to the current Jira user, matching the default reporter.
+
 ## Publishing to GitHub
 
 This repository can be public as source code only. Do not publish live credentials or internal ticket lists.

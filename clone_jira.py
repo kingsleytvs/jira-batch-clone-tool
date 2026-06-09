@@ -116,6 +116,19 @@ class JiraClient:
     def update_issue(self, issue_key, payload):
         return self.request("PUT", f"/rest/api/2/issue/{issue_key}", payload)
 
+    def get_transitions(self, issue_key):
+        return self.request("GET", f"/rest/api/2/issue/{issue_key}/transitions")
+
+    def transition_issue(self, issue_key, transition_id, fields=None):
+        payload = {"transition": {"id": str(transition_id)}}
+        if fields:
+            payload["fields"] = fields
+        return self.request(
+            "POST",
+            f"/rest/api/2/issue/{issue_key}/transitions",
+            payload,
+        )
+
     def link_issues(self, source_key, cloned_key, link_type):
         payload = {
             "type": {"name": link_type},
@@ -126,6 +139,9 @@ class JiraClient:
 
     def get_fields(self):
         return self.request("GET", "/rest/api/2/field")
+
+    def get_myself(self):
+        return self.request("GET", "/rest/api/2/myself")
 
 
 def normalize_field_name(value):
